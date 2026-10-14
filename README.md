@@ -107,6 +107,12 @@ Eng_atliq_capstone_project_submission/
 
 ---
 
+## 📝 Write-up
+
+How the speed lane relates to the batch lane, when a business needs each, why Gold windows appear late, and why events are keyed by `order_id`: see [Speed lane vs. batch lane write-up](00_docs/speed_lane_writeup.md).
+
+---
+
 ## 📚 Where to Go Next
 
 - **[Batch lane README](batch/README.md):** components, schedule, Gold data model, setup steps.
