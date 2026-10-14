@@ -1,0 +1,139 @@
+{
+    "name": "PL_Nightly_Sync",
+    "properties": {
+        "activities": [
+            {
+                "name": "EP_INGEST_OLTP_TO_BRONZE",
+                "type": "ExecutePipeline",
+                "dependsOn": [],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "PL_INGEST_OLTP_TO_BRONZE",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "EP_INGEST_CSV_TO_BRONZE",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Notebook_Databricks_Bronze_To_Silver_OLTP",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "PL_INGEST_CSV_TO_BRONZE",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "Notebook_Databricks_Bronze_To_Silver_OLTP",
+                "type": "DatabricksNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "EP_INGEST_OLTP_TO_BRONZE",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "notebookPath": "/Users/atliq01@rijalashishgmail.onmicrosoft.com/NB_Bronze_To_Silver"
+                },
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureDatabricks_Notebook_Run",
+                    "type": "LinkedServiceReference"
+                }
+            },
+            {
+                "name": "Notebook_Databricks_Bronze_To_Silver_CSV",
+                "type": "DatabricksNotebook",
+                "dependsOn": [
+                    {
+                        "activity": "EP_INGEST_CSV_TO_BRONZE",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "notebookPath": "/Users/atliq01@rijalashishgmail.onmicrosoft.com/NB_Bronze_To_Silver_CSV"
+                },
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureDatabricks_Notebook_Run",
+                    "type": "LinkedServiceReference"
+                }
+            },
+            {
+                "name": "Run_DBT_GitHub_Action",
+                "type": "WebActivity",
+                "dependsOn": [
+                    {
+                        "activity": "Notebook_Databricks_Bronze_To_Silver_CSV",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "POST",
+                    "headers": {
+                        "Accept": "application/vnd.github+json",
+                        "Authorization": "Bearer github_pat_xxxxxxxxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxx",
+                        "Content-Type": "application/json",
+                        "User-Agent": "adf-pipeline"
+                    },
+                    "url": {
+                        "value": "https://api.github.com/repos/connecttechashish/Eng_atliq_capstone/actions/workflows/databricks_gold_prod.yml/dispatches",
+                        "type": "Expression"
+                    },
+                    "body": {
+                        "ref": "main"
+                    }
+                }
+            }
+        ],
+        "annotations": [],
+        "lastPublishTime": "2026-10-07T02:57:58Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}

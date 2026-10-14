@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: "Customer dimension table"
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_product
+    description: "Product dimension table"
+    columns:
+      - name: product_id
+        tests:
+          - not_null
+          - unique
+
+  - name: fact_sales
+    description: "Fact table at order-item grain"
+  
+    columns:
+  
+      - name: order_item_id
+        description: "Unique identifier for each order item"
+        tests:
+          - unique
+          - not_null
+  
+      - name: customer_id
+        description: "Customer placing the order"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
+  
+      - name: product_id
+        description: "Product purchased"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_id
+  
+      - name: order_id
+        description: "Order identifier"
+        tests:
+          - not_null
+  
+      - name: order_date
+        description: "Date order was placed"
+        tests:
+          - not_null
+  
+      - name: quantity
+        description: "Quantity purchased"
+        tests:
+          - not_null
+  
+      - name: item_price
+        description: "Unit selling price at purchase time"
+        tests:
+          - not_null
+  
+      - name: gross_revenue
+        description: "Quantity × Item Price"
+        tests:
+          - not_null
+  
+      - name: status
+        description: "Order status"
+        tests:
+          - not_null

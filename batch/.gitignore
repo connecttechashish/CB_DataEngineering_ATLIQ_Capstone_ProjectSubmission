@@ -1,0 +1,33 @@
+# dbt
+dbt_packages/
+logs/
+target/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Databricks
+*.dbc
+databricks/.ipynb_checkpoints/
+
+# Fabric
+fabric/**/temp/
+fabric/**/cache/
+
+# ADF
+adf/**/debug/
+adf/**/backup/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets (never commit)
+.env
+*.env
+.env.local

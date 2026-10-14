@@ -1,0 +1,29 @@
+{
+    "name": "DS_CSV_Parquet_Bronze",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "LS_Atliq_AzureDataLakeStorage",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "p_target_folder": {
+                "type": "string"
+            }
+        },
+        "annotations": [],
+        "type": "Parquet",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "folderPath": {
+                    "value": "@dataset().p_target_folder",
+                    "type": "Expression"
+                },
+                "fileSystem": "lakehouse"
+            },
+            "compressionCodec": "snappy"
+        },
+        "schema": []
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,15 @@
+{
+    "name": "LS_AzureSqlDatabase_OLTP",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
+    "properties": {
+        "annotations": [],
+        "type": "AzureSqlDatabase",
+        "typeProperties": {
+            "server": "atliq-sql.database.windows.net",
+            "database": "atliq_commerce",
+            "encrypt": "mandatory",
+            "trustServerCertificate": false,
+            "authenticationType": "SystemAssignedManagedIdentity"
+        }
+    }
+}

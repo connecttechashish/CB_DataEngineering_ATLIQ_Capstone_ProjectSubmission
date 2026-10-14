@@ -1,0 +1,316 @@
+{
+    "name": "PL_INGEST_OLTP_TO_BRONZE",
+    "properties": {
+        "activities": [
+            {
+                "name": "Set_Run_Start_Time",
+                "type": "SetVariable",
+                "dependsOn": [],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "run_start_at",
+                    "value": {
+                        "value": "@utcNow()",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Get_Control_Table",
+                "type": "Lookup",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "AzureSqlSource",
+                        "sqlReaderQuery": "SELECT \n    table_name,\n    source_schema,\n    load_type,\n    watermark_column,\n    last_loaded_at\nFROM etl.control_table;\n",
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "DS_SQL_Source_OLTP",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema": "etl",
+                            "table_name": "control_table"
+                        }
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "ForEach_Table",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "Get_Control_Table",
+                        "dependencyConditions": [
+                            "Completed"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('Get_Control_Table').output.value",
+                        "type": "Expression"
+                    },
+                    "activities": [
+                        {
+                            "name": "If_Incremental",
+                            "type": "IfCondition",
+                            "dependsOn": [],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "expression": {
+                                    "value": "@equals(item().load_type, 'incremental')\n",
+                                    "type": "Expression"
+                                },
+                                "ifFalseActivities": [
+                                    {
+                                        "name": "Copy_Full",
+                                        "type": "Copy",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "source": {
+                                                "type": "AzureSqlSource",
+                                                "sqlReaderQuery": {
+                                                    "value": "SELECT * FROM @{item().source_schema}.@{item().table_name}\n",
+                                                    "type": "Expression"
+                                                },
+                                                "queryTimeout": "02:00:00",
+                                                "partitionOption": "None"
+                                            },
+                                            "sink": {
+                                                "type": "ParquetSink",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSWriteSettings",
+                                                    "copyBehavior": "FlattenHierarchy"
+                                                },
+                                                "formatSettings": {
+                                                    "type": "ParquetWriteSettings"
+                                                }
+                                            },
+                                            "enableStaging": false,
+                                            "translator": {
+                                                "type": "TabularTranslator",
+                                                "typeConversion": true,
+                                                "typeConversionSettings": {
+                                                    "allowDataTruncation": true,
+                                                    "treatBooleanAsNumber": false
+                                                }
+                                            }
+                                        },
+                                        "inputs": [
+                                            {
+                                                "referenceName": "DS_SQL_Source_OLTP",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "schema": "@{item().source_schema}",
+                                                    "table_name": "@{item().table_name}"
+                                                }
+                                            }
+                                        ],
+                                        "outputs": [
+                                            {
+                                                "referenceName": "DS_ADLS_Sink_Bronze",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "table_name": "@{item().table_name}",
+                                                    "folder_date": "'full'"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "name": "Update_Watermark_Full",
+                                        "type": "SqlServerStoredProcedure",
+                                        "dependsOn": [
+                                            {
+                                                "activity": "Copy_Full",
+                                                "dependencyConditions": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        ],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "storedProcedureName": "[etl].[usp_update_watermark]",
+                                            "storedProcedureParameters": {
+                                                "table_name": {
+                                                    "value": {
+                                                        "value": "@{item().table_name}",
+                                                        "type": "Expression"
+                                                    },
+                                                    "type": "String"
+                                                },
+                                                "run_start_at": {
+                                                    "value": {
+                                                        "value": "@{variables('run_start_at')}",
+                                                        "type": "Expression"
+                                                    },
+                                                    "type": "Datetime"
+                                                }
+                                            }
+                                        },
+                                        "linkedServiceName": {
+                                            "referenceName": "LS_AzureSqlDatabase_OLTP",
+                                            "type": "LinkedServiceReference"
+                                        }
+                                    }
+                                ],
+                                "ifTrueActivities": [
+                                    {
+                                        "name": "Copy_Incremental",
+                                        "type": "Copy",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "source": {
+                                                "type": "AzureSqlSource",
+                                                "sqlReaderQuery": {
+                                                    "value": "SELECT *\nFROM @{item().source_schema}.@{item().table_name}\nWHERE @{item().watermark_column} > '@{item().last_loaded_at}'\n",
+                                                    "type": "Expression"
+                                                },
+                                                "queryTimeout": "02:00:00",
+                                                "partitionOption": "None"
+                                            },
+                                            "sink": {
+                                                "type": "ParquetSink",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSWriteSettings"
+                                                },
+                                                "formatSettings": {
+                                                    "type": "ParquetWriteSettings"
+                                                }
+                                            },
+                                            "enableStaging": false,
+                                            "translator": {
+                                                "type": "TabularTranslator",
+                                                "typeConversion": true,
+                                                "typeConversionSettings": {
+                                                    "allowDataTruncation": true,
+                                                    "treatBooleanAsNumber": false
+                                                }
+                                            }
+                                        },
+                                        "inputs": [
+                                            {
+                                                "referenceName": "DS_SQL_Source_OLTP",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "schema": {
+                                                        "value": "@{item().source_schema}",
+                                                        "type": "Expression"
+                                                    },
+                                                    "table_name": {
+                                                        "value": "@{item().table_name}",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            }
+                                        ],
+                                        "outputs": [
+                                            {
+                                                "referenceName": "DS_ADLS_Sink_Bronze",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "table_name": "@{item().table_name}",
+                                                    "folder_date": "@{formatDateTime(variables('run_start_at'),'yyyy-MM-dd')}"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "name": "Update_Watermark_Incremental",
+                                        "type": "SqlServerStoredProcedure",
+                                        "dependsOn": [
+                                            {
+                                                "activity": "Copy_Incremental",
+                                                "dependencyConditions": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        ],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "storedProcedureName": "[etl].[usp_update_watermark]",
+                                            "storedProcedureParameters": {
+                                                "table_name": {
+                                                    "value": {
+                                                        "value": "@{item().table_name}",
+                                                        "type": "Expression"
+                                                    },
+                                                    "type": "String"
+                                                },
+                                                "run_start_at": {
+                                                    "value": {
+                                                        "value": "@{variables('run_start_at')}",
+                                                        "type": "Expression"
+                                                    },
+                                                    "type": "Datetime"
+                                                }
+                                            }
+                                        },
+                                        "linkedServiceName": {
+                                            "referenceName": "LS_AzureSqlDatabase_OLTP",
+                                            "type": "LinkedServiceReference"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "variables": {
+            "run_start_at": {
+                "type": "String"
+            }
+        },
+        "annotations": [],
+        "lastPublishTime": "2026-09-30T04:17:57Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
