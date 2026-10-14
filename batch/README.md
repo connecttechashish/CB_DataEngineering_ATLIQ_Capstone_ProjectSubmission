@@ -31,10 +31,8 @@ This project builds a **nightly, incremental, idempotent pipeline** that:
   <img src="00_docs/atliq_commerce_architecture.png" alt="AtliQ Commerce architecture, detailed PNG" width="100%">
 </p>
 
+
 ### Version 3: Detailed diagram (SVG, zoomable)
-
-![AtliQ Commerce architecture, detailed SVG](00_docs/atliq_commerce_architecture.svg)
-
 
 ```mermaid
 flowchart LR
@@ -61,6 +59,8 @@ flowchart LR
     E -- dbt --> F
     F --> G --> H
 ```
+
+---
 
 ### Components
 
