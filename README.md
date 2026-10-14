@@ -39,7 +39,7 @@ This repository holds both solutions side by side, so one codebase shows how bat
 ### Batch lane
 
 <p align="center">
-  <img src="batch/00_docs/atliq_commerce_architecture.png" alt="AtliQ Commerce batch architecture" width="100%">
+  <img src="batch/00_docs/atliq_commerce_architecture_0.svg" alt="AtliQ Commerce batch architecture" width="100%">
 </p>
 
 ### Stream lane
